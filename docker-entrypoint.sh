@@ -3,16 +3,24 @@
 PATCH_LOCK=/tmp/patched.lock
 
 if [[ -f ${PATCH_LOCK} ]]; then
-	echo "Captcha is patched already!"
+	echo "Patch already applied, skipping"
 else
-    LOGIN_SCRIPT=/var/www/html/app/controllers/login.php
-    sed -e '/if(!SafeUtil::verify_captcha/,+3 s/^/#/' \
-        -i ${LOGIN_SCRIPT}
+    if [[ -z "${PSA_NO_CAPTCHA}" ]]; then
+        # Repairs broken captcha
+        SAFEUTIL_SCRIPT=/var/www/html/app/classes/SafeUtil.php
+        sed -e "s/, '.'.Html::host()//g" \
+            -i ${SAFEUTIL_SCRIPT}
+    else
+        # Turns captcha validation off
+        LOGIN_SCRIPT=/var/www/html/app/controllers/login.php
+        sed -e '/if(!SafeUtil::verify_captcha/,+3 s/^/#/' \
+            -i ${LOGIN_SCRIPT}
 
-    LOGIN_TPL=/var/www/html/app/views/login.tpl.php
-    sed -e '/<img id="captcha"/,+1d' \
-        -i ${LOGIN_TPL}
-
+        # Removes captcha from login page
+        LOGIN_TPL=/var/www/html/app/views/login.tpl.php
+        sed -e '/<img id="captcha"/,+1d' \
+            -i ${LOGIN_TPL}
+    fi
     touch ${PATCH_LOCK}
 fi
 
